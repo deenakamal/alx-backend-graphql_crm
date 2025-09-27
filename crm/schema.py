@@ -6,6 +6,7 @@ from django.db import IntegrityError
 from graphene_django.filter import DjangoFilterConnectionField
 from .filters import CustomerFilter, ProductFilter, OrderFilter
 
+
 class CustomerType(DjangoObjectType):
     class Meta:
         model = Customer
@@ -121,3 +122,34 @@ class Query(graphene.ObjectType):
     all_customers = DjangoFilterConnectionField(CustomerType, filterset_class=CustomerFilter)
     all_products = DjangoFilterConnectionField(ProductType, filterset_class=ProductFilter)
     all_orders = DjangoFilterConnectionField(OrderType, filterset_class=OrderFilter)
+    
+
+class ProductType(graphene.ObjectType):
+    id = graphene.Int()
+    name = graphene.String()
+    stock = graphene.Int()
+
+
+class UpdateLowStockProducts(graphene.Mutation):
+    class Arguments:
+        pass
+
+    success = graphene.String()
+    updated_products = graphene.List(ProductType)
+
+    def mutate(self, info):
+        low_stock_products = Product.objects.filter(stock__lt=10)
+        updated_products = []
+
+        for product in low_stock_products:
+            product.stock += 10
+            product.save()
+            updated_products.append(product)
+
+        return UpdateLowStockProducts(
+            success="Low stock products updated successfully!",
+            updated_products=updated_products
+        )
+
+class Mutation(graphene.ObjectType):
+    update_low_stock_products = UpdateLowStockProducts.Field()
